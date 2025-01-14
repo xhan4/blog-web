@@ -1,0 +1,78 @@
+name: 部署文档
+on:
+  push:
+    branches:
+      - master
+permissions:
+  contents: write
+jobs:
+  deploy-gh-pages:
+    runs-on: ubuntu-latest
+    steps:
+      # 检查 commit 中是否包含 sync 关键字
+      - name: Check commit message
+        run: |
+          if [[ "${{ github.event.head_commit.message }}" == *"#sync#"* ]]; then
+            echo "SYNC=true" >> $GITHUB_ENV
+          else
+            echo "SYNC=false" >> $GITHUB_ENV
+          fi
+      # 镜像 Github 组织仓库到 Gitee
+      - name: Mirror the Github organization repos to Gitee.
+        if: env.SYNC == 'true'
+        uses: Yikun/hub-mirror-action@master
+        with:
+          src: 'github/xhan4'
+          dst: 'gitee/fuming1'
+          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+          dst_token: ${{ secrets.GITEE_TOKEN }}
+          static_list: "blog-web"
+          force_update: true
+      # 目录权限
+      - name: Reset permissions for checkout
+        run: |
+          sudo chown -R runner:runner /home/runner/work/blog-web/blog-web
+          sudo chmod -R 755 /home/runner/work/blog-web/blog-web
+      # 检出代码
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # 设置 pnpm
+      - name: 设置 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.4.0
+      # 设置 Node.js
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # 安装依赖
+      - name: 安装依赖
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      # 构建文档
+      - name: 构建文档
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192
+        run: |-
+          pnpm run docs:build
+          > src/.vuepress/dist/.nojekyll
+      # 设置 SSH 密钥以便进行远程连接
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      # 添加远程主机的公钥到 known_hosts
+      - name: Add SSH host key to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H 101.200.160.131 >> ~/.ssh/known_hosts || true
+          chmod 644 ~/.ssh/known_hosts
+      # 上传源代码到服务器，并排除.git 目录
+      - name: Upload source code to server (excluding.git)
+        run: |
+          rsync -av --delete --progress./src/.vuepress/dist/ root@101.200.160.131:/workspace/deploy/blog-web/
