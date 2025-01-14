@@ -59,7 +59,7 @@ jobs:
         env:
           NODE_OPTIONS: --max_old_space_size=8192
         run: |-
-          pnpm run docs:build
+          pnpm run build
           > src/.vuepress/dist/.nojekyll
       # 设置 SSH 密钥以便进行远程连接
       - name: Set up SSH
