@@ -75,4 +75,4 @@ jobs:
       # 上传源代码到服务器，并排除.git 目录
       - name: Upload source code to server (excluding.git)
         run: |
-          rsync -av --delete --progress./src/.vuepress/dist/ root@101.200.160.131:/workspace/deploy/blog-web/
+          rsync -av --delete --progress ./src/.vuepress/dist/ root@101.200.160.131:/workspace/deploy/blog-web/
