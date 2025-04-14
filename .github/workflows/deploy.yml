@@ -48,7 +48,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+        
+      - name: 配置 pnpm
+        run: |
+          corepack enable
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.STORE_PATH }}
+            node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
       # 安装依赖
       - name: 安装依赖
         run: |
